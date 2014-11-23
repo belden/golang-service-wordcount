@@ -36,7 +36,7 @@ Is  "this" the same as "This"?
 END
 
 # send it to the running service
-curl -F filename=/tmp/test-file.txt @/tmp/test-file.txt http://localhost:3000/wordcounts
+curl -s -F file=@/tmp/test-file.txt -F filename=/tmp/test-file.txt http://localhost:3000/
 ```
 
 Sample response:

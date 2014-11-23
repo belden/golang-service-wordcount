@@ -18,7 +18,7 @@ type Dictionary struct {
 	Words map[string]int
 }
 
-func emit_json(rw http.ResponseWriter, target Dictionary) {
+func emit_json(rw http.ResponseWriter, target interface{}) {
 	js, err := json.Marshal(target)
 
 	rw.Header().Set("Content-Type", "application/json")
@@ -48,37 +48,46 @@ func wc_file() http.HandlerFunc {
 
 	// for now I'll just assume it's a POST - assuming it's within 10MB, too
 	return func(rw http.ResponseWriter, request *http.Request) {
-		file, _, err := request.FormFile("file")
+		if request.Method == "GET" {
+			filenames := make([]string, 0, len(Cache))
+			for filename := range Cache {
+				filenames = append(filenames, filename)
+			}
+			emit_json(rw, filenames)
 
-		// grab the filename
-		request.ParseForm()
-		params := request.Form
-		fn := params["filename"]
-		filename := fn[0]
+		} else if request.Method == "POST" {
+			file, _, err := request.FormFile("file")
 
-		// bail out if it's in Cache already
-		if seen, ok := Cache[filename]; ok {
-			fmt.Printf("Returning cached data for %s\n", filename)
-			emit_json(rw, seen)
-			return
-		}
+			// grab the filename
+			request.ParseForm()
+			params := request.Form
+			fn := params["filename"]
+			filename := fn[0]
 
-		if err == nil {
-			// slurp the file, then convert byte array to a string
-			corpus_bytes, _ := ioutil.ReadAll(file)
-			corpus := string(corpus_bytes[:])
+			// bail out if it's in Cache already
+			if seen, ok := Cache[filename]; ok {
+				fmt.Printf("Returning cached data for %s\n", filename)
+				emit_json(rw, seen)
+				return
+			}
 
-			// split into an array of words, then count them
-			counts := count_words(split_words(corpus))
+			if err == nil {
+				// slurp the file, then convert byte array to a string
+				corpus_bytes, _ := ioutil.ReadAll(file)
+				corpus := string(corpus_bytes[:])
 
-			// store in Cache
-			fmt.Printf("storing data for %s in Cache\n", filename)
-			Cache[filename] = counts
+				// split into an array of words, then count them
+				counts := count_words(split_words(corpus))
 
-			// send response
-			emit_json(rw, counts)
-		} else {
-			fmt.Fprintf(rw, "encountered error: %s", err)
+				// store in Cache
+				fmt.Printf("storing data for %s in Cache\n", filename)
+				Cache[filename] = counts
+
+				// send response
+				emit_json(rw, counts)
+			} else {
+				fmt.Fprintf(rw, "encountered error: %s", err)
+			}
 		}
 	}
 }
