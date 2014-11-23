@@ -44,12 +44,7 @@ func wc_file(rw http.ResponseWriter, request *http.Request) {
 		// split into an array of words, then count them
 		counts := count_words(split_words(corpus))
 
-		// let's see what we've got here
-		fmt.Printf("total: %d\n", counts.Total)
-		for word, freq := range counts.Words {
-			fmt.Printf("  %s: %d\n", word, freq)
-		}
-
+		// emit json
 		counts_json, err := json.Marshal(counts)
 		if err == nil {
 			rw.Write(counts_json)
