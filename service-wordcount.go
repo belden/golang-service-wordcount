@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -13,17 +14,17 @@ func split_words(corpus string) []string {
 }
 
 type Dictionary struct {
-	total int
-	words map[string]int
+	Total int
+	Words map[string]int
 }
 
 func count_words(words []string) Dictionary {
 
-	dict := Dictionary{total: 0, words: map[string]int{}}
+	dict := Dictionary{Total: 0, Words: map[string]int{}}
 
 	for _, word := range words {
-		dict.total++
-		dict.words[word]++
+		dict.Total++
+		dict.Words[word]++
 	}
 
 	return dict
@@ -44,9 +45,16 @@ func wc_file(rw http.ResponseWriter, request *http.Request) {
 		counts := count_words(split_words(corpus))
 
 		// let's see what we've got here
-		fmt.Printf("total: %d\n", counts.total)
-		for word, freq := range counts.words {
+		fmt.Printf("total: %d\n", counts.Total)
+		for word, freq := range counts.Words {
 			fmt.Printf("  %s: %d\n", word, freq)
+		}
+
+		counts_json, err := json.Marshal(counts)
+		if err == nil {
+			rw.Write(counts_json)
+		} else {
+			fmt.Fprintf(rw, "json encountered error: %s", err)
 		}
 	} else {
 		fmt.Fprintf(rw, "encountered error: %s", err)
