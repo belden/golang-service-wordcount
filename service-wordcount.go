@@ -43,7 +43,9 @@ func count_words(words []string) Dictionary {
 	return dict
 }
 
-func wc_file(cache map[string]Dictionary) http.HandlerFunc {
+func wc_file() http.HandlerFunc {
+	Cache := make(map[string]Dictionary)
+
 	// for now I'll just assume it's a POST - assuming it's within 10MB, too
 	return func(rw http.ResponseWriter, request *http.Request) {
 		file, _, err := request.FormFile("file")
@@ -54,8 +56,8 @@ func wc_file(cache map[string]Dictionary) http.HandlerFunc {
 		fn := params["filename"]
 		filename := fn[0]
 
-		// bail out if it's in cache already
-		if seen, ok := cache[filename]; ok {
+		// bail out if it's in Cache already
+		if seen, ok := Cache[filename]; ok {
 			fmt.Printf("Returning cached data for %s\n", filename)
 			emit_json(rw, seen)
 			return
@@ -69,9 +71,9 @@ func wc_file(cache map[string]Dictionary) http.HandlerFunc {
 			// split into an array of words, then count them
 			counts := count_words(split_words(corpus))
 
-			// store in cache
-			fmt.Printf("storing data for %s in cache\n", filename)
-			cache[filename] = counts
+			// store in Cache
+			fmt.Printf("storing data for %s in Cache\n", filename)
+			Cache[filename] = counts
 
 			// send response
 			emit_json(rw, counts)
@@ -82,7 +84,6 @@ func wc_file(cache map[string]Dictionary) http.HandlerFunc {
 }
 
 func main() {
-	cache := make(map[string]Dictionary)
-	http.HandleFunc("/", wc_file(cache))
+	http.HandleFunc("/", wc_file())
 	http.ListenAndServe(":3000", nil)
 }
