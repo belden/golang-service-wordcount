@@ -49,10 +49,8 @@ func wc_file(rw http.ResponseWriter, request *http.Request) {
 			fmt.Printf("  %s: %d\n", word, freq)
 		}
 	} else {
-		fmt.Fprintf(rw, "encoutered error: %s", err)
+		fmt.Fprintf(rw, "encountered error: %s", err)
 	}
-
-	fmt.Fprintln(rw, "Success!")
 }
 
 func main() {
