@@ -43,26 +43,37 @@ func count_words(words []string) Dictionary {
 	return dict
 }
 
+func filename(request *http.Request) string {
+	request.ParseForm()
+	params := request.Form
+	fn := params["filename"]
+	return fn[0]
+}
+
 func wc_file() http.HandlerFunc {
 	Cache := make(map[string]Dictionary)
 
 	// for now I'll just assume it's a POST - assuming it's within 10MB, too
 	return func(rw http.ResponseWriter, request *http.Request) {
+
 		if request.Method == "GET" {
+
 			filenames := make([]string, 0, len(Cache))
 			for filename := range Cache {
 				filenames = append(filenames, filename)
 			}
 			emit_json(rw, filenames)
 
+		} else if request.Method == "DELETE" {
+
+			filename := filename(request)
+			fmt.Printf("got a DELETE %s\n", filename)
+			delete(Cache, filename)
+			emit_json(rw, []byte(nil))
+
 		} else if request.Method == "POST" {
 			file, _, err := request.FormFile("file")
-
-			// grab the filename
-			request.ParseForm()
-			params := request.Form
-			fn := params["filename"]
-			filename := fn[0]
+			filename := filename(request)
 
 			// bail out if it's in Cache already
 			if seen, ok := Cache[filename]; ok {
