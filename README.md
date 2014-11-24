@@ -3,10 +3,9 @@
 ### Install Dependencies
 
 Well, I've never built anything in Go before, so I searched around for a REST API for Go that
-looked sensible to me. I found [sleepy](http://dougblack.io/words/a-restful-micro-framework-in-go.html),
-which is a very small framework - about 100 lines of Go.
+looked sensible to me. I found [an article](http://dougblack.io/words/a-restful-micro-framework-in-go.html) on writing a micro-framework for RESTful APIs in Go.
 
-I thought I'd go with [sleepy](github.com/dougblack/sleepy), but ended up using plain old `net/http`. The code is quite messy as a result - dispatching of different request methods is ugly. I wanted to code towards functionality more than towards beauty.
+I thought I'd go with [sleepy](http://github.com/dougblack/sleepy), but ended up using plain old `net/http`. The code is quite messy as a result - dispatching of different request methods is ugly. I wanted to code towards functionality more than towards beauty.
 
 ### Run the test suite
 
