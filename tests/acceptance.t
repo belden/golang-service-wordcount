@@ -73,3 +73,33 @@ END
   my $cached = TestHelpers->POST(port => $port, filename => $filename, content => 'gets ignored');
   is_deeply( $cached, $dict, 'content is cached based on filename' );
 }
+
+# we can GET and DELETE from the cache
+{
+  # sanity check: this file isn't in the service yet
+  my $test_file = 'bicyclists-bellicose';
+  my $cached_files = TestHelpers->GET(port => $port);
+  is_deeply(
+    [grep { $_ eq $test_file } @$cached_files],
+    [],
+    "$test_file not in cache"
+  );
+
+  # stick it in the service and try again
+  TestHelpers->POST(port => $port, filename => $test_file, content => 'unmindful-dervishes');
+  $cached_files = TestHelpers->GET(port => $port);
+  is_deeply(
+    [grep { $_ eq $test_file } @$cached_files],
+    [$test_file],
+    "$test_file in cache"
+  );
+
+  # delete it out, yo
+  TestHelpers->DELETE(port => $port, filename => $test_file);
+  $cached_files = TestHelpers->GET(port => $port);
+  is_deeply(
+    [grep { $_ eq $test_file } @$cached_files],
+    [],
+    "$test_file no longer in cache"
+  );
+}

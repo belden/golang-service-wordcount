@@ -3,7 +3,7 @@ use warnings;
 package TestHelpers;
 use base qw(Exporter);
 
-use JSON qw(decode_json);
+use JSON;
 
 # "You could use a CPAN library for a lot of this."
 # Yep, that's true - but for a one-off project, I don't
@@ -28,8 +28,13 @@ sub wait_for_server_to_start_running {
 
 sub _simple_curl {
   my ($class, %args) = @_;
-  chomp(my $response = `curl -X $args{method} http://localhost:$args{port}/?filename=$args{filename}`);
-  return decode_json($response);
+
+  my $request = "http://localhost:$args{port}/";
+  $request .= "?filename=$args{filename}" if exists $args{filename};
+
+  chomp(my $response = `curl -s -X $args{method} $request`);
+  my $json = JSON->new->allow_nonref;
+  return $json->decode($response);
 }
 
 sub DELETE {
