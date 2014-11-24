@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -104,6 +105,15 @@ func wc_file() http.HandlerFunc {
 }
 
 func main() {
+	// read --port command-line option
+	portNumber := flag.Int("port", 3000, "port to start on")
+	flag.Parse()
+
+	// tell the user where to find the service
+	portString := fmt.Sprintf(":%d", *portNumber)
+	fmt.Printf("Starting on http://localhost%s\n", portString)
+
+	// register handlers and start listening for requests
 	http.HandleFunc("/", wc_file())
-	http.ListenAndServe(":3000", nil)
+	http.ListenAndServe(portString, nil)
 }
