@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -45,11 +46,15 @@ func count_words(words []string) Dictionary {
 	return dict
 }
 
-func filename(request *http.Request) string {
+func FilenameInRequest(request *http.Request) (string, error) {
 	request.ParseForm()
-	params := request.Form
-	fn := params["filename"]
-	return fn[0]
+	// params := request.Form
+	filename := request.FormValue("filename")
+	if len(filename) > 0 {
+		return filename, nil
+	} else {
+		return "", errors.New("no filename given in request")
+	}
 }
 
 func wc_file() http.HandlerFunc {
@@ -60,22 +65,33 @@ func wc_file() http.HandlerFunc {
 
 		if request.Method == "GET" {
 
-			filenames := make([]string, 0, len(Cache))
-			for filename := range Cache {
-				filenames = append(filenames, filename)
+			if filename, err := FilenameInRequest(request); err != nil {
+
+				// eg, http://localhost:3000/ - return the cached filenames
+				filenames := make([]string, 0, len(Cache))
+				for filename := range Cache {
+					filenames = append(filenames, filename)
+				}
+				emit_json(rw, filenames)
+
+			} else {
+
+				// eg, http://localhost:3000/?filename=foo - return Cache["foo"]
+				emit_json(rw, Cache[filename])
+
 			}
-			emit_json(rw, filenames)
 
 		} else if request.Method == "DELETE" {
 
-			filename := filename(request)
+			filename, _ := FilenameInRequest(request)
 			fmt.Printf("got a DELETE %s\n", filename)
 			delete(Cache, filename)
 			emit_json(rw, []byte(nil))
 
 		} else if request.Method == "POST" {
 			file, _, err := request.FormFile("file")
-			filename := filename(request)
+
+			filename, _ := FilenameInRequest(request)
 
 			// bail out if it's in Cache already
 			if seen, ok := Cache[filename]; ok {
@@ -115,6 +131,6 @@ func main() {
 	fmt.Printf("Starting on http://localhost%s\n", portString)
 
 	// register handlers and start listening for requests
-	http.HandleFunc("/", wc_file())
+	http.HandleFunc("/files", wc_file())
 	http.ListenAndServe(portString, nil)
 }

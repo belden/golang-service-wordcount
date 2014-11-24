@@ -103,3 +103,11 @@ END
     "$test_file no longer in cache"
   );
 }
+
+# we can GET a specific file
+{
+	my $filename = 'Garry-colors';
+	my $post = TestHelpers->POST(port => $port, filename => $filename, content => 'deadpanned Porter songwriter-denote');
+	my $get = TestHelpers->GET(port => $port, filename => $filename);
+	is_deeply( $get, $post, 'we can retrieve from cache' );
+}

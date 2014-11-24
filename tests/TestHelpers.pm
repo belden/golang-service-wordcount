@@ -29,7 +29,7 @@ sub wait_for_server_to_start_running {
 sub _simple_curl {
   my ($class, %args) = @_;
 
-  my $request = "http://localhost:$args{port}/";
+  my $request = "http://localhost:$args{port}/files";
   $request .= "?filename=$args{filename}" if exists $args{filename};
 
   chomp(my $response = `curl -s -X $args{method} $request`);
@@ -60,7 +60,7 @@ sub POST {
   open my $fh, '+>', $tempfile or die "write $tempfile: $!\n";
   print $fh $args{content};
   close $fh;
-  my $json = `curl -s -F filename=$args{filename} -F file=\@${tempfile} http://localhost:$args{port}/`;
+  my $json = `curl -s -F filename=$args{filename} -F file=\@${tempfile} http://localhost:$args{port}/files`;
 
   unlink $tempfile;
 
