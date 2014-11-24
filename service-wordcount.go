@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"regexp"
+	"strings"
 )
 
 func split_words(corpus string) []string {
@@ -38,7 +39,7 @@ func count_words(words []string) Dictionary {
 
 	for _, word := range words {
 		dict.Total++
-		dict.Words[word]++
+		dict.Words[strings.ToLower(word)]++
 	}
 
 	return dict
