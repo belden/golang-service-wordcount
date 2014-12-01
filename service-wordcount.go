@@ -19,7 +19,7 @@ func emit_json(rw http.ResponseWriter, target interface{}) {
 		rw.Write(js)
 	} else {
 		rw.WriteHeader(500)
-		rw.Write([]byte(`"{\"error\": \"yikes\"}"`))
+		rw.Write([]byte(`{"error": "error in json encoding"}`))
 	}
 }
 
