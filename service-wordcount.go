@@ -34,8 +34,11 @@ func FilenameInRequest(request *http.Request) (string, error) {
 	}
 }
 
-func wc_file() http.HandlerFunc {
-	Cache := make(map[string]Wc.Dictionary)
+func InitCache() map[string]Wc.Dictionary {
+	return make(map[string]Wc.Dictionary)
+}
+
+func HandleWcFile(WcCache map[string]Wc.Dictionary) http.HandlerFunc {
 
 	// for now I'll just assume it's a POST - assuming it's within 10MB, too
 	return func(rw http.ResponseWriter, request *http.Request) {
@@ -45,16 +48,16 @@ func wc_file() http.HandlerFunc {
 			if filename, err := FilenameInRequest(request); err != nil {
 
 				// eg, http://localhost:3000/ - return the cached filenames
-				filenames := make([]string, 0, len(Cache))
-				for filename := range Cache {
+				filenames := make([]string, 0, len(WcCache))
+				for filename := range WcCache {
 					filenames = append(filenames, filename)
 				}
 				emit_json(rw, filenames)
 
 			} else {
 
-				// eg, http://localhost:3000/?filename=foo - return Cache["foo"]
-				emit_json(rw, Cache[filename])
+				// eg, http://localhost:3000/?filename=foo - return WcCache["foo"]
+				emit_json(rw, WcCache[filename])
 
 			}
 
@@ -62,7 +65,7 @@ func wc_file() http.HandlerFunc {
 
 			filename, _ := FilenameInRequest(request)
 			fmt.Printf("got a DELETE %s\n", filename)
-			delete(Cache, filename)
+			delete(WcCache, filename)
 			emit_json(rw, []byte(nil))
 
 		} else if request.Method == "POST" {
@@ -70,8 +73,8 @@ func wc_file() http.HandlerFunc {
 
 			filename, _ := FilenameInRequest(request)
 
-			// bail out if it's in Cache already
-			if seen, ok := Cache[filename]; ok {
+			// bail out if it's in WcCache already
+			if seen, ok := WcCache[filename]; ok {
 				fmt.Printf("Returning cached data for %s\n", filename)
 				emit_json(rw, seen)
 				return
@@ -85,15 +88,30 @@ func wc_file() http.HandlerFunc {
 				// split into an array of words, then count them
 				counts := Wc.CountWords(Wc.SplitWords(corpus))
 
-				// store in Cache
-				fmt.Printf("storing data for %s in Cache\n", filename)
-				Cache[filename] = counts
+				// store in WcCache
+				fmt.Printf("storing data for %s in WcCache\n", filename)
+				WcCache[filename] = counts
 
 				// send response
 				emit_json(rw, counts)
 			} else {
 				fmt.Fprintf(rw, "encountered error: %s", err)
 			}
+		}
+	}
+}
+
+func HandleAdminFiles(WcCache map[string]Wc.Dictionary) http.HandlerFunc {
+	return func(rw http.ResponseWriter, request *http.Request) {
+
+		// DELETE /admin/files
+		if request.Method == "DELETE" {
+			for k := range WcCache {
+				delete(WcCache, k)
+			}
+			emit_json(rw, []byte(`[]`))
+		} else if request.Method == "GET" {
+			emit_json(rw, WcCache)
 		}
 	}
 }
@@ -107,7 +125,11 @@ func main() {
 	portString := fmt.Sprintf(":%d", *portNumber)
 	fmt.Printf("Starting on http://localhost%s\n", portString)
 
+	// get a cache
+	WcCache := InitCache()
+
 	// register handlers and start listening for requests
-	http.HandleFunc("/files", wc_file())
+	http.HandleFunc("/files", HandleWcFile(WcCache))
+	http.HandleFunc("/admin/files", HandleAdminFiles(WcCache))
 	http.ListenAndServe(portString, nil)
 }

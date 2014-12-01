@@ -14,6 +14,7 @@ GetOptions(
 );
 
 TestHelpers->wait_for_server_to_start_running($port);
+TestHelpers->set_port($port);
 
 # make sure we've got `curl`
 {
@@ -24,7 +25,7 @@ TestHelpers->wait_for_server_to_start_running($port);
 # the service counts words, normalizing to lower-case
 {
   my $filename = 'quirky-contemplating';
-  my $dict = TestHelpers->POST(port => $port, filename => $filename, content => <<END);
+  my $dict = TestHelpers->POST(filename => $filename, content => <<END);
 This is <a> sentence with <a> few extra characters.
 You can't forget that an apostrophe is a legitimate character for English words.
 And though underscores aren't legitimate in English, some mothers-in-law love hyphens.
@@ -70,7 +71,7 @@ END
 
   is_deeply( $dict, $expected, 'got right data for test text' );
 
-  my $cached = TestHelpers->POST(port => $port, filename => $filename, content => 'gets ignored');
+  my $cached = TestHelpers->POST(filename => $filename, content => 'gets ignored');
   is_deeply( $cached, $dict, 'content is cached based on filename' );
 }
 
@@ -78,7 +79,7 @@ END
 {
   # sanity check: this file isn't in the service yet
   my $test_file = 'bicyclists-bellicose';
-  my $cached_files = TestHelpers->GET(port => $port);
+  my $cached_files = TestHelpers->GET;
   is_deeply(
     [grep { $_ eq $test_file } @$cached_files],
     [],
@@ -86,8 +87,8 @@ END
   );
 
   # stick it in the service and try again
-  TestHelpers->POST(port => $port, filename => $test_file, content => 'unmindful-dervishes');
-  $cached_files = TestHelpers->GET(port => $port);
+  TestHelpers->POST(filename => $test_file, content => 'unmindful-dervishes');
+  $cached_files = TestHelpers->GET;
   is_deeply(
     [grep { $_ eq $test_file } @$cached_files],
     [$test_file],
@@ -95,8 +96,8 @@ END
   );
 
   # delete it out, yo
-  TestHelpers->DELETE(port => $port, filename => $test_file);
-  $cached_files = TestHelpers->GET(port => $port);
+  TestHelpers->DELETE(filename => $test_file);
+  $cached_files = TestHelpers->GET;
   is_deeply(
     [grep { $_ eq $test_file } @$cached_files],
     [],
@@ -107,7 +108,37 @@ END
 # we can GET a specific file
 {
 	my $filename = 'Garry-colors';
-	my $post = TestHelpers->POST(port => $port, filename => $filename, content => 'deadpanned Porter songwriter-denote');
-	my $get = TestHelpers->GET(port => $port, filename => $filename);
+	my $post = TestHelpers->POST(filename => $filename, content => 'deadpanned Porter songwriter-denote');
+	my $get = TestHelpers->GET(filename => $filename);
 	is_deeply( $get, $post, 'we can retrieve from cache' );
+}
+
+# /admin/ routes operate on all files
+{
+  # some sanity setup: stick something in the cache and ensure it's listed as a file we can GET
+  my $filename = 'casuist-monied';
+  TestHelpers->POST(filename => $filename, content => "this is ${filename} content");
+  my $cached_files = TestHelpers->GET();
+  ok( 1 == scalar(grep { $_ eq $filename } @$cached_files), "${filename} shows up in cache" );
+
+  # let's bulk-DELETE everything and ensure our canary file is gone
+	TestHelpers->DELETE(endpoint => '/admin/files');
+  is_deeply( TestHelpers->GET, [], 'DELETE /admin/files deletes files' );
+
+  # Insert some files to the cache
+  my @stub_files = qw(molecules-Clayton bifurcated-unmanned);
+	my @expected_json = map {
+		TestHelpers->POST(filename => $_, content => "this is $_");
+	} @stub_files;
+
+  # bulk-fetch all files
+  my $bulk_get = TestHelpers->GET(endpoint => '/admin/files');
+  is_deeply(
+    $bulk_get,
+    {
+      map { $_ => +{Total => 3, Words => +{this => 1, is => 1, lc($_) => 1}} }
+      @stub_files
+    },
+    'GET /admin/files returns expected data'
+   ) or do { use Data::Dumper; $Data::Dumper::SortKeys=1; print STDERR Dumper($bulk_get) };
 }

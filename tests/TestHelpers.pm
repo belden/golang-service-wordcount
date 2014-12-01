@@ -10,6 +10,9 @@ use JSON;
 # see much value in forcing the end user to install a bunch
 # of CPAN libraries. So I'm coding against a possibly old core Perl.
 
+my $PORT;
+sub set_port { $PORT = pop }
+
 sub wait_for_server_to_start_running {
   my ($class, $port) = @_;
 
@@ -29,7 +32,9 @@ sub wait_for_server_to_start_running {
 sub _simple_curl {
   my ($class, %args) = @_;
 
-  my $request = "http://localhost:$args{port}/files";
+  my $endpoint = $args{endpoint} || '/files';
+
+  my $request = "http://localhost:${PORT}${endpoint}";
   $request .= "?filename=$args{filename}" if exists $args{filename};
 
   chomp(my $response = `curl -s -X $args{method} $request`);
@@ -55,12 +60,14 @@ sub PUT {
 sub POST {
   my ($filename, %args) = @_;
 
+  my $endpoint = $args{endpoint} || '/files';
+
   # bi-directional pipes are a nuisance in perl, just pipe $content to curl and send output to a file
   my $tempfile = "/tmp/output.$$";
   open my $fh, '+>', $tempfile or die "write $tempfile: $!\n";
   print $fh $args{content};
   close $fh;
-  my $json = `curl -s -F filename=$args{filename} -F file=\@${tempfile} http://localhost:$args{port}/files`;
+  my $json = `curl -s -F filename=$args{filename} -F file=\@${tempfile} http://localhost:${PORT}${endpoint}`;
 
   unlink $tempfile;
 
