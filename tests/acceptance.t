@@ -140,5 +140,34 @@ END
       @stub_files
     },
     'GET /admin/files returns expected data'
-   );
+  );
+}
+
+sub show {
+  use Data::Dumper;
+  $Data::Dumper::SortKeys = $Data::Dumper::SortKeys = 1;
+  print STDERR Dumper(shift);
+}
+
+# multi-GET will sum things up for us
+{
+  my @files = qw(clangs-sweetening advising-Heliopolis succotashs-togas);
+  foreach my $file (@files) {
+    TestHelpers->POST(filename => $file, content => "to be or not to be, ${file} is the question");
+  }
+  my $multi = TestHelpers->GET(endpoint => "/files?filename=$files[0]&filename=$files[2]");
+  is_deeply( $multi, +{
+    Total => 20, # because the test text for each "file" is 10 words long
+    Words => +{
+      to => 4,
+      be => 4,
+      or => 2,
+      not => 2,
+      lc($files[0]) => 1,
+      lc($files[2]) => 1,
+      is => 2,
+      the => 2,
+      question => 2,
+    },
+  }, 'GET /files?filename=foo&filename=bar sums things up' ) or show($multi);
 }

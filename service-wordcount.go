@@ -23,14 +23,19 @@ func emit_json(rw http.ResponseWriter, target interface{}) {
 	}
 }
 
-func FilenameInRequest(request *http.Request) (string, error) {
+func FilenamesInRequest(request *http.Request) ([]string, error) {
 	request.ParseForm()
-	// params := request.Form
-	filename := request.FormValue("filename")
-	if len(filename) > 0 {
-		return filename, nil
+	params := request.Form
+
+	var filenames []string
+	for _, filename := range params["filename"] {
+		filenames = append(filenames, filename)
+	}
+
+	if len(filenames) > 0 {
+		return filenames, nil
 	} else {
-		return "", errors.New("no filename given in request")
+		return nil, errors.New("no filenames given in request")
 	}
 }
 
@@ -46,20 +51,38 @@ func HandleWcFile(WcCache map[string]Wc.Dictionary) http.HandlerFunc {
 		switch request.Method {
 		case "GET":
 			func() {
-				if filename, err := FilenameInRequest(request); err != nil {
+				if filenames, err := FilenamesInRequest(request); err != nil {
 
 					// eg, http://localhost:3000/files - return the cached filenames
-					filenames := make([]string, 0, len(WcCache))
+					known_files := make([]string, 0, len(WcCache))
 					for filename := range WcCache {
-						filenames = append(filenames, filename)
+						known_files = append(known_files, filename)
 					}
-					emit_json(rw, filenames)
+					emit_json(rw, known_files)
 
 				} else {
 
-					// eg, http://localhost:3000/?filename=foo - return WcCache["foo"]
-					emit_json(rw, WcCache[filename])
+					if len(filenames) == 0 {
+						// eg, http://localhost:3000/?filename=foo - return WcCache["foo"]
+						emit_json(rw, WcCache[filenames[0]])
+					} else {
+						// eg, http://localhost:3000/?filename=foo&filename=bar
+						OutCache := Wc.Dictionary{Total: 0, Words: map[string]int{}}
 
+						for _, filename := range filenames {
+							OutCache.Total += WcCache[filename].Total
+
+							for k, v := range WcCache[filename].Words {
+								if _, ok := OutCache.Words[k]; ok {
+									OutCache.Words[k] += v
+								} else {
+									OutCache.Words[k] = v
+								}
+							}
+						}
+
+						emit_json(rw, OutCache)
+					}
 				}
 
 			}()
@@ -67,9 +90,9 @@ func HandleWcFile(WcCache map[string]Wc.Dictionary) http.HandlerFunc {
 		case "DELETE":
 			func() {
 
-				filename, _ := FilenameInRequest(request)
-				fmt.Printf("got a DELETE %s\n", filename)
-				delete(WcCache, filename)
+				filenames, _ := FilenamesInRequest(request)
+				fmt.Printf("got a DELETE %s\n", filenames[0])
+				delete(WcCache, filenames[0])
 				emit_json(rw, []byte(nil))
 
 			}()
@@ -78,11 +101,11 @@ func HandleWcFile(WcCache map[string]Wc.Dictionary) http.HandlerFunc {
 			func() {
 				file, _, err := request.FormFile("file")
 
-				filename, _ := FilenameInRequest(request)
+				filenames, _ := FilenamesInRequest(request)
 
 				// bail out if it's in WcCache already
-				if seen, ok := WcCache[filename]; ok {
-					fmt.Printf("Returning cached data for %s\n", filename)
+				if seen, ok := WcCache[filenames[0]]; ok {
+					fmt.Printf("Returning cached data for %s\n", filenames[0])
 					emit_json(rw, seen)
 					return
 				}
@@ -96,8 +119,8 @@ func HandleWcFile(WcCache map[string]Wc.Dictionary) http.HandlerFunc {
 					counts := Wc.CountWords(Wc.SplitWords(corpus))
 
 					// store in WcCache
-					fmt.Printf("storing data for %s in WcCache\n", filename)
-					WcCache[filename] = counts
+					fmt.Printf("storing data for %s in WcCache\n", filenames[0])
+					WcCache[filenames[0]] = counts
 
 					// send response
 					emit_json(rw, counts)

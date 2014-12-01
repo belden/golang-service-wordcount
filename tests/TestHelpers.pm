@@ -37,7 +37,7 @@ sub _simple_curl {
   my $request = "http://localhost:${PORT}${endpoint}";
   $request .= "?filename=$args{filename}" if exists $args{filename};
 
-  chomp(my $response = `curl -s -X $args{method} $request`);
+  chomp(my $response = `curl -s -X $args{method} '$request'`);
   my $json = JSON->new->allow_nonref;
   return $json->decode($response);
 }
@@ -67,7 +67,7 @@ sub POST {
   open my $fh, '+>', $tempfile or die "write $tempfile: $!\n";
   print $fh $args{content};
   close $fh;
-  my $json = `curl -s -F filename=$args{filename} -F file=\@${tempfile} http://localhost:${PORT}${endpoint}`;
+  my $json = `curl -s -F filename=$args{filename} -F file=\@${tempfile} 'http://localhost:${PORT}${endpoint}'`;
 
   unlink $tempfile;
 
