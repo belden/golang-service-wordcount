@@ -47,7 +47,7 @@ func HandleWcFile(WcCache map[string]Wc.Dictionary) http.HandlerFunc {
 
 			if filename, err := FilenameInRequest(request); err != nil {
 
-				// eg, http://localhost:3000/ - return the cached filenames
+				// eg, http://localhost:3000/files - return the cached filenames
 				filenames := make([]string, 0, len(WcCache))
 				for filename := range WcCache {
 					filenames = append(filenames, filename)
