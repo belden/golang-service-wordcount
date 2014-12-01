@@ -140,5 +140,5 @@ END
       @stub_files
     },
     'GET /admin/files returns expected data'
-   ) or do { use Data::Dumper; $Data::Dumper::SortKeys=1; print STDERR Dumper($bulk_get) };
+   );
 }

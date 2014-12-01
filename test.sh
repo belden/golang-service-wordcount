@@ -1,19 +1,19 @@
 #!/bin/bash
 
 function run_tests() {
-  typeset quiet=${1}; shift
+  typeset verbose=${1}; shift
   typeset port=3127
 
   # start server on some port
-  if [[ ${quiet} == --quiet ]]; then
-    go run service-wordcount.go --port ${port} \
-      1>/dev/null \
-      2>&1 \
-      &
-  else
+  if [[ ${verbose} == --verbose ]]; then
     go run service-wordcount.go --port ${port} \
       1> >(sed 's/^/# server stdout: /') \
       2> >(sed 's/^/# server stderr: /') \
+      &
+  else
+    go run service-wordcount.go --port ${port} \
+      1>/dev/null \
+      2>&1 \
       &
   fi
 
