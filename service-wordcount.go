@@ -1,25 +1,14 @@
 package main
 
 import (
+	"./utils"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"regexp"
-	"strings"
 )
-
-func split_words(corpus string) []string {
-	words := regexp.MustCompile("[A-Za-z'-]+")
-	return words.FindAllString(corpus, -1)
-}
-
-type Dictionary struct {
-	Total int
-	Words map[string]int
-}
 
 func emit_json(rw http.ResponseWriter, target interface{}) {
 	js, err := json.Marshal(target)
@@ -34,18 +23,6 @@ func emit_json(rw http.ResponseWriter, target interface{}) {
 	}
 }
 
-func count_words(words []string) Dictionary {
-
-	dict := Dictionary{Total: 0, Words: map[string]int{}}
-
-	for _, word := range words {
-		dict.Total++
-		dict.Words[strings.ToLower(word)]++
-	}
-
-	return dict
-}
-
 func FilenameInRequest(request *http.Request) (string, error) {
 	request.ParseForm()
 	// params := request.Form
@@ -58,7 +35,7 @@ func FilenameInRequest(request *http.Request) (string, error) {
 }
 
 func wc_file() http.HandlerFunc {
-	Cache := make(map[string]Dictionary)
+	Cache := make(map[string]Wc.Dictionary)
 
 	// for now I'll just assume it's a POST - assuming it's within 10MB, too
 	return func(rw http.ResponseWriter, request *http.Request) {
@@ -106,7 +83,7 @@ func wc_file() http.HandlerFunc {
 				corpus := string(corpus_bytes[:])
 
 				// split into an array of words, then count them
-				counts := count_words(split_words(corpus))
+				counts := Wc.CountWords(Wc.SplitWords(corpus))
 
 				// store in Cache
 				fmt.Printf("storing data for %s in Cache\n", filename)
