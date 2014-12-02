@@ -36,19 +36,20 @@ func main() {
 
 	tuples := MakeOffsets(len(Foo), 3)
 
-	gotC := make(chan []int)
+	pagesC := make(chan []int)
 
 	for low, high := range tuples {
 		low, high := low, high
 		go func() {
-			gotC <- Foo[low:high]
+			page := Foo[low:high]
+			pagesC <- page
 		}()
 	}
 
-	var got []interface{} // the old "I don't know how to make a multidimensional array"
+	var pages []interface{} // the old "I don't know how to make a multidimensional array"
 	for i := 0; i < len(tuples); i++ {
-		it := <-gotC
-		got = append(got, it)
+		it := <-pagesC
+		pages = append(pages, it)
 		fmt.Printf("%d\n", it)
 	}
 
