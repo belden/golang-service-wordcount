@@ -1,6 +1,7 @@
-package main
+package Iterate
 
 import (
+	"errors"
 	"fmt"
 )
 
@@ -12,7 +13,11 @@ func GetFoo(Size int) []int {
 	return Out
 }
 
-func MakeOffsets(space int, pages int) map[int]int {
+func MakeOffsets(space int, pages int) (map[int]int, error) {
+	if space < 1 {
+		return nil, errors.New("Iterate.MakeOffsets(page_data, pages): page_data must be > 0")
+	}
+
 	tuples := make(map[int]int)
 
 	// MakeOffsets(10, 3) -> {0:3, 3:6, 6:10}
@@ -28,13 +33,13 @@ func MakeOffsets(space int, pages int) map[int]int {
 	}
 	tuples[_i] = space
 
-	return tuples
+	return tuples, nil
 }
 
 func main() {
 	Foo := GetFoo(10)
 
-	tuples := MakeOffsets(len(Foo), 3)
+	tuples, _ := MakeOffsets(len(Foo), 3)
 
 	pagesC := make(chan []int)
 
