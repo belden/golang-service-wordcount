@@ -2,6 +2,7 @@ package main
 
 import (
 	"./utils/wc"
+	"./utils/wc/paginate"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -116,7 +117,23 @@ func HandleWcFile(WcCache map[string]Wc.Dictionary) http.HandlerFunc {
 					corpus := string(corpus_bytes[:])
 
 					// split into an array of words, then count them
-					counts := Wc.CountWords(Wc.SplitWords(corpus))
+					corpus_words := Wc.SplitWords(corpus)
+					pages, _ := WcPaginate.MakePageSlices(len(corpus_words), 10)
+
+					countsC := make(chan Wc.Dictionary)
+					for low, high := range pages {
+						low, high := low, high
+						go func() {
+							countsC <- Wc.CountWords(corpus_words[low:high])
+						}()
+					}
+
+					var gotPages []Wc.Dictionary
+					for i := 0; i < len(pages); i++ {
+						gotPages = append(gotPages, <-countsC)
+					}
+
+					counts := sum_counts(gotPages)
 
 					// store in WcCache
 					fmt.Printf("storing data for %s in WcCache\n", filenames[0])
@@ -130,6 +147,24 @@ func HandleWcFile(WcCache map[string]Wc.Dictionary) http.HandlerFunc {
 			}()
 		}
 	}
+}
+
+func sum_counts(dicts []Wc.Dictionary) Wc.Dictionary {
+	OutCache := Wc.Dictionary{Total: 0, Words: map[string]int{}}
+
+	for _, d := range dicts {
+		OutCache.Total += d.Total
+
+		for k, v := range d.Words {
+			if _, ok := OutCache.Words[k]; ok {
+				OutCache.Words[k] += v
+			} else {
+				OutCache.Words[k] = v
+			}
+		}
+	}
+
+	return OutCache
 }
 
 func HandleAdminFiles(WcCache map[string]Wc.Dictionary) http.HandlerFunc {
