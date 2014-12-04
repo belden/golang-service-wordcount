@@ -68,18 +68,9 @@ func HandleWcFile(WcCache map[string]Wc.Dictionary) http.HandlerFunc {
 						emit_json(rw, WcCache[filenames[0]])
 					} else {
 						// eg, http://localhost:3000/?filename=foo&filename=bar
-						OutCache := Wc.Dictionary{Total: 0, Words: map[string]int{}}
-
+						OutCache := Wc.New()
 						for _, filename := range filenames {
-							OutCache.Total += WcCache[filename].Total
-
-							for k, v := range WcCache[filename].Words {
-								if _, ok := OutCache.Words[k]; ok {
-									OutCache.Words[k] += v
-								} else {
-									OutCache.Words[k] = v
-								}
-							}
+							OutCache = Wc.Add(OutCache, WcCache[filename])
 						}
 
 						emit_json(rw, OutCache)
@@ -116,10 +107,14 @@ func HandleWcFile(WcCache map[string]Wc.Dictionary) http.HandlerFunc {
 					corpus_bytes, _ := ioutil.ReadAll(file)
 					corpus := string(corpus_bytes[:])
 
-					// split into an array of words, then count them
+					// split into an array of words
 					corpus_words := Wc.SplitWords(corpus)
+					// ToStore := Wc.CountWords(corpus_words)
+
+					// figure out slice offsets for 10 pages (10 is arbitrary)
 					pages, _ := WcPaginate.MakePageSlices(len(corpus_words), 10)
 
+					// send 10 goroutines after the words we've extracted
 					countsC := make(chan Wc.Dictionary)
 					for low, high := range pages {
 						low, high := low, high
@@ -128,43 +123,25 @@ func HandleWcFile(WcCache map[string]Wc.Dictionary) http.HandlerFunc {
 						}()
 					}
 
-					var gotPages []Wc.Dictionary
+					// add up results
+					ToStore := Wc.New()
 					for i := 0; i < len(pages); i++ {
-						gotPages = append(gotPages, <-countsC)
+						ToStore = Wc.Add(ToStore, <-countsC)
 					}
-
-					counts := sum_counts(gotPages)
 
 					// store in WcCache
 					fmt.Printf("storing data for %s in WcCache\n", filenames[0])
-					WcCache[filenames[0]] = counts
+					WcCache[filenames[0]] = ToStore
 
 					// send response
-					emit_json(rw, counts)
+					// emit_json(rw, ToStore)
+					emit_json(rw, "ok")
 				} else {
 					fmt.Fprintf(rw, "encountered error: %s", err)
 				}
 			}()
 		}
 	}
-}
-
-func sum_counts(dicts []Wc.Dictionary) Wc.Dictionary {
-	OutCache := Wc.Dictionary{Total: 0, Words: map[string]int{}}
-
-	for _, d := range dicts {
-		OutCache.Total += d.Total
-
-		for k, v := range d.Words {
-			if _, ok := OutCache.Words[k]; ok {
-				OutCache.Words[k] += v
-			} else {
-				OutCache.Words[k] = v
-			}
-		}
-	}
-
-	return OutCache
 }
 
 func HandleAdminFiles(WcCache map[string]Wc.Dictionary) http.HandlerFunc {
